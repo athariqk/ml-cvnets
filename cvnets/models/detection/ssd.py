@@ -329,19 +329,21 @@ class SingleShotMaskDetector(BaseDetection):
         device: Optional[torch.device] = torch.device("cpu"),
         *args,
         **kwargs
-    ) -> Union[Tuple[Tensor, Tensor, Tensor], Tuple[Tensor, ...]]:
+    ) -> Union[Tuple[Tensor, Tensor, Tensor, Tensor], Tuple[Tensor, ...]]:
 
         locations = []
         confidences = []
         anchors = []
+        phenotypes = []
 
         for os, ssd_head in zip(self.output_strides, self.ssd_heads):
             x = end_points["os_{}".format(os)]
             fm_h, fm_w = x.shape[2:]
-            loc, pred = ssd_head(x)
+            loc, pred, pheno = ssd_head(x)
 
             locations.append(loc)
             confidences.append(pred)
+            phenotypes.append(pheno)
 
             anchors_fm_ctr = self.anchor_box_generator(
                 fm_height=fm_h, fm_width=fm_w, fm_output_stride=os, device=device
@@ -350,11 +352,12 @@ class SingleShotMaskDetector(BaseDetection):
 
         locations = torch.cat(locations, dim=1)
         confidences = torch.cat(confidences, dim=1)
+        phenotypes = torch.cat(phenotypes, dim=1)
 
         anchors = torch.cat(anchors, dim=0)
         anchors = anchors.unsqueeze(dim=0)
 
-        return confidences, locations, anchors
+        return confidences, locations, anchors, phenotypes
 
     def forward(
         self, x: Union[Tensor, Dict]
@@ -372,11 +375,11 @@ class SingleShotMaskDetector(BaseDetection):
         backbone_end_points: Dict = self.get_backbone_features(input_tensor)
 
         if not is_coreml_conversion(self.opts):
-            confidences, locations, anchors = self.ssd_forward(
+            confidences, locations, anchors, phenotypes = self.ssd_forward(
                 end_points=backbone_end_points, device=device
             )
 
-            output_dict = {"scores": confidences, "boxes": locations}
+            output_dict = {"scores": confidences, "boxes": locations, "phenotypes": phenotypes}
 
             if not self.training:
                 # compute the detection results during evaluation
@@ -385,7 +388,7 @@ class SingleShotMaskDetector(BaseDetection):
                     pred_locations=locations, anchors=anchors
                 )
 
-                detections = self.postprocess_detections(boxes=boxes, scores=scores)
+                detections = self.postprocess_detections(boxes=boxes, scores=scores, phenotypes=phenotypes)
                 output_dict["detections"] = detections
 
             return output_dict
@@ -405,7 +408,7 @@ class SingleShotMaskDetector(BaseDetection):
 
         device = x.device
         enc_end_points: Dict = self.get_backbone_features(x)
-        confidences, locations, anchors = self.ssd_forward(
+        confidences, locations, anchors, phenotypes = self.ssd_forward(
             end_points=enc_end_points, device=device
         )
 
@@ -414,30 +417,34 @@ class SingleShotMaskDetector(BaseDetection):
         boxes = self.match_prior.convert_to_boxes(
             pred_locations=locations, anchors=anchors
         )
-        detections = self.postprocess_detections(boxes=boxes, scores=scores)[0]
+        detections = self.postprocess_detections(boxes=boxes, scores=scores, phenotypes=phenotypes)[0]
         return detections
 
     @torch.no_grad()
     def postprocess_detections(
-        self, boxes: Tensor, scores: Tensor
+        self, boxes: Tensor, scores: Tensor, phenotypes: Tensor
     ) -> List[DetectionPredTuple]:
         """Post process detections, including NMS"""
         # boxes [B, N, 4]
-        # scores [B, N]
+        # scores [B, N, n_classes]
         # labels [B, N]
+        # phenotypes [B, N, num_phenotypes]
 
         batch_size = boxes.shape[0]
         n_classes = scores.shape[-1]
+        num_phenotypes = phenotypes.shape[-1]
 
         device = boxes.device
         box_dtype = boxes.dtype
         scores_dtype = scores.dtype
+        phenotypes_dtype = phenotypes.dtype
 
         results = []
         for b_id in range(batch_size):
             object_labels = []
             object_boxes = []
             object_scores = []
+            object_phenotypes = []
 
             for class_index in range(1, n_classes):
                 probs = scores[b_id, :, class_index]
@@ -446,11 +453,13 @@ class SingleShotMaskDetector(BaseDetection):
                 if probs.size(0) == 0:
                     continue
                 masked_boxes = boxes[b_id, mask, :]
+                masked_phenotypes = phenotypes[b_id, mask, :]
 
                 # keep only top-k indices
                 num_topk = min(self.top_k, probs.size(0))
                 probs, idxs = probs.topk(num_topk)
                 masked_boxes = masked_boxes[idxs, ...]
+                masked_phenotypes = masked_phenotypes[idxs, ...]
 
                 object_boxes.append(masked_boxes)
                 object_scores.append(probs)
@@ -459,18 +468,21 @@ class SingleShotMaskDetector(BaseDetection):
                         probs, fill_value=class_index, dtype=torch.int64, device=device
                     )
                 )
+                object_phenotypes.append(masked_phenotypes)
 
             if len(object_scores) == 0:
                 output = DetectionPredTuple(
                     labels=torch.empty(0, device=device, dtype=torch.long),
                     scores=torch.empty(0, device=device, dtype=scores_dtype),
                     boxes=torch.empty(0, 4, device=device, dtype=box_dtype),
+                    phenotypes=torch.empty(0, num_phenotypes, device=device, dtype=phenotypes_dtype),
                 )
             else:
                 # concatenate all results
                 object_scores = torch.cat(object_scores, dim=0)
                 object_boxes = torch.cat(object_boxes, dim=0)
                 object_labels = torch.cat(object_labels, dim=0)
+                object_phenotypes = torch.cat(object_phenotypes, dim=0)
 
                 # non-maximum suppression
                 keep = batched_nms(
@@ -482,6 +494,7 @@ class SingleShotMaskDetector(BaseDetection):
                     labels=object_labels[keep],
                     scores=object_scores[keep],
                     boxes=object_boxes[keep],
+                    phenotypes=object_phenotypes[keep],
                 )
             results.append(output)
         return results
