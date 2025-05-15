@@ -10,7 +10,7 @@ def main(args: Optional[List[str]] = None, **kwargs):
     
     model = get_model(opts)
     
-    torch.save(model, "coco-ssd-mobilevitv2-0.75_structure_2class.pt")
+    torch.save(model, "model/coco-ssd-mobilevitv2-0.75_structure.pt")
 
     model.info()
 

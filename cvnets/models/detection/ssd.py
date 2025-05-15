@@ -154,6 +154,8 @@ class SingleShotMaskDetector(BaseDetection):
         # Create SSD detection and classification heads
         anchor_steps = self.anchor_box_generator.step
 
+        self.n_phenotypes = getattr(opts, "model.detection.ssd.n_phenotypes", 0)
+
         self.ssd_heads = nn.ModuleList()
 
         for os, in_dim, proj_dim, n_anchors, step in zip(
@@ -170,6 +172,7 @@ class SingleShotMaskDetector(BaseDetection):
                     n_classes=self.n_detection_classes,
                     n_coordinates=self.coordinates,
                     n_anchors=n_anchors,
+                    n_phenotypes=self.n_phenotypes,
                     proj_channels=proj_dim,
                     kernel_size=3 if os != -1 else 1,
                     stride=step,
@@ -280,6 +283,11 @@ class SingleShotMaskDetector(BaseDetection):
             action="store_true",
             help="Use SSD with FPN",
         )
+
+        group.add_argument("--model.detection.ssd.num-phenotypes",
+                           type=int,
+                           default=0,
+                           help="Number of lettuce phenotypes regression outputs")
 
         return parser
 
