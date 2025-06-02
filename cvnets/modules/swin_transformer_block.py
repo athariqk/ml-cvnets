@@ -61,7 +61,7 @@ class PatchMerging(BaseModule):
         )
         self.strided = strided
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         """
         Args:
             x (Tensor): input tensor with expected layout of [..., H, W, C]
@@ -293,7 +293,7 @@ class ShiftedWindowAttention(BaseModule):
             self.dropout,
         )
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         """
         Args:
             x (Tensor): Tensor with layout of [B, H, W, C]
@@ -404,7 +404,7 @@ class SwinTransformerBlock(BaseModule):
             self.norm_type,
         )
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = x + self.stochastic_depth(self.attn(x))
         x = x + self.stochastic_depth(self.mlp(x))
         return x

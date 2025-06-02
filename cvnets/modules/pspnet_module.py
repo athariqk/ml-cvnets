@@ -91,7 +91,7 @@ class PSP(BaseModule):
             ),
         )
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x_size = x.shape[2:]
         out = [x] + [
             F.interpolate(

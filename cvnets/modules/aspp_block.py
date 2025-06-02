@@ -107,7 +107,7 @@ class ASPP(BaseModule):
         self.n_atrous_branches = len(atrous_rates)
         self.dropout_layer = Dropout2d(p=dropout)
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = []
         for conv in self.convs:
             out.append(conv(x))

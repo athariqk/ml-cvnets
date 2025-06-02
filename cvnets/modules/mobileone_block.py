@@ -134,7 +134,7 @@ class MobileOneBlock(BaseModule):
                     use_act=False,
                 )
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass implements inference logic for module
         before and after reparameterization.
@@ -387,7 +387,7 @@ class RepLKBlock(BaseModule):
                     use_act=False,
                 )
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass implements inference logic for module
         before and after reparameterization.

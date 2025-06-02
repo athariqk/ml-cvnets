@@ -70,7 +70,7 @@ class BaseAnyNNModel(nn.Module):
         """Initialize model weights"""
         initialize_weights(opts=opts, modules=self.modules())
 
-    def forward(self, x: Any, *args, **kwargs) -> Any:
+    def forward(self, x: Any) -> Any:
         """Implement the model-specific forward function in sub-classes."""
         raise NotImplementedError
 

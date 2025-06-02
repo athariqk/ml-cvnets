@@ -63,9 +63,7 @@ class SingleHeadAttention(BaseLayer):
         x_q: Tensor,
         x_kv: Optional[Tensor] = None,
         key_padding_mask: Optional[Tensor] = None,
-        attn_mask: Optional[Tensor] = None,
-        *args,
-        **kwargs
+        attn_mask: Optional[Tensor] = None
     ) -> Tensor:
         # [N, P, C] --> [N, P, 3C]
         if x_kv is None:

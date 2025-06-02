@@ -43,8 +43,8 @@ class PositionalEmbedding(BaseLayer):
             **kwargs
         )
 
-    def forward(self, seq_len: int, *args, **kwargs) -> Tensor:
-        return self.pos_embed(seq_len, *args, **kwargs)
+    def forward(self, seq_len: int) -> Tensor:
+        return self.pos_embed(seq_len)
 
     def __repr__(self):
         return self.pos_embed.__repr__()
@@ -80,7 +80,7 @@ class LearnablePositionalEmbedding(nn.Module):
             with torch.no_grad():
                 self.pos_embed[:, :, self.padding_idx, ...] = 0.0
 
-    def forward(self, seq_len: int, *args, **kwargs) -> Tensor:
+    def forward(self, seq_len: int) -> Tensor:
         # scale pos embedding
         pos_embed = self.pos_embed
         if self.padding_idx is not None:
@@ -152,7 +152,7 @@ class SinusoidalPositionalEmbedding(nn.Module):
             emb[self.padding_idx, :] = 0
         return emb.unsqueeze(0).unsqueeze(0)
 
-    def forward(self, seq_len: int, *args, **kwargs) -> Tensor:
+    def forward(self, seq_len: int) -> Tensor:
         # scale pos embedding
         pos_embed = self.pos_embed
 

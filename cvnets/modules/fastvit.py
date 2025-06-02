@@ -121,7 +121,7 @@ class PatchEmbed(BaseModule):
         )
         self.proj = nn.Sequential(*block)
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass
 
@@ -202,7 +202,7 @@ class RepMixer(BaseModule):
                     layer_scale_init_value * torch.ones((dim, 1, 1)),
                 )
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass implements inference logic for module
         before and after reparameterization.
@@ -311,7 +311,7 @@ class ConvFFN(BaseModule):
         )
         self.drop = nn.Dropout(drop)
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass
 
@@ -387,7 +387,7 @@ class RepMixerBlock(BaseModule):
                 layer_scale_init_value * torch.ones((dim, 1, 1)),
             )
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass
 
@@ -480,7 +480,7 @@ class AttentionBlock(BaseModule):
         out = out.transpose(-2, -1).reshape(B, C, H, W)
         return out
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass
 
@@ -562,7 +562,7 @@ class RepCPE(BaseModule):
                 groups=embed_dim,
             )
 
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass implements inference logic for module
         before and after reparameterization.

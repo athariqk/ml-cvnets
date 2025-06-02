@@ -278,8 +278,6 @@ class MultiHeadAttention(BaseLayer):
         x_kv: Optional[Tensor] = None,
         key_padding_mask: Optional[Tensor] = None,
         attn_mask: Optional[Tensor] = None,
-        *args,
-        **kwargs
     ) -> Tensor:
         if self.coreml_compatible:
             # For CoreML, we follow batch-first format. Make sure the input is of the form
@@ -290,7 +288,7 @@ class MultiHeadAttention(BaseLayer):
                 key_padding_mask=key_padding_mask,
                 attn_mask=attn_mask,
             )
-        elif kwargs.get("use_pytorch_mha", False):
+        else:
             # pytorch uses sequence-first format. Make sure that input is of the form [Sequence, Batch, Hidden dim]
             return self.forward_pytorch(
                 x_q=x_q,
@@ -298,12 +296,12 @@ class MultiHeadAttention(BaseLayer):
                 key_padding_mask=key_padding_mask,
                 attn_mask=attn_mask,
             )
-        else:
-            # our default implementation format follows batch-first format. Make sure the input is of the form
-            # [Batch , Sequence, Hidden_dim]
-            return self.forward_default(
-                x_q=x_q,
-                x_kv=x_kv,
-                key_padding_mask=key_padding_mask,
-                attn_mask=attn_mask,
-            )
+        # else:
+        #     # our default implementation format follows batch-first format. Make sure the input is of the form
+        #     # [Batch , Sequence, Hidden_dim]
+        #     return self.forward_default(
+        #         x_q=x_q,
+        #         x_kv=x_kv,
+        #         key_padding_mask=key_padding_mask,
+        #         attn_mask=attn_mask,
+        #     )

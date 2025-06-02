@@ -135,7 +135,7 @@ class SSDHead(BaseModule):
         x_sampled = torch.index_select(x_sampled, dim=-2, index=indices_h)
         return x_sampled
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
         batch_size = x.shape[0]
 
         if self.proj_layer is not None:
@@ -237,7 +237,7 @@ class SSDInstanceHead(BaseModule):
             if isinstance(layer, (nn.Conv2d, nn.ConvTranspose2d)):
                 initialize_conv_layer(module=layer, init_method="kaiming_normal")
 
-    def forward(self, x: Tensor, boxes: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor, boxes: Tensor) -> Tensor:
         rois = self.roi_align(x, boxes)
         rois = self.seg_head(rois)
         return rois

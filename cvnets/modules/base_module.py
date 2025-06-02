@@ -15,7 +15,7 @@ class BaseModule(nn.Module):
     def __init__(self, *args, **kwargs):
         super(BaseModule, self).__init__()
 
-    def forward(self, x: Any, *args, **kwargs) -> Any:
+    def forward(self, x: Any) -> Any:
         raise NotImplementedError
 
     def __repr__(self):

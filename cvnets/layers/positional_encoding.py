@@ -67,7 +67,7 @@ class SinusoidalPositionalEncoding(BaseLayer):
         self.register_buffer("pe", pos_encoding)
 
     def forward_patch_last(
-        self, x, indices: Optional[Tensor] = None, *args, **kwargs
+        self, x, indices: Optional[Tensor] = None
     ) -> Tensor:
         # seq_length should be the last dim
         if indices is None:
@@ -82,7 +82,7 @@ class SinusoidalPositionalEncoding(BaseLayer):
         return self.dropout(x)
 
     def forward_others(
-        self, x, indices: Optional[Tensor] = None, *args, **kwargs
+        self, x, indices: Optional[Tensor] = None
     ) -> Tensor:
         # seq_length should be the second last dim
         if indices is None:
@@ -96,7 +96,7 @@ class SinusoidalPositionalEncoding(BaseLayer):
             x = x + selected_pe
         return self.dropout(x)
 
-    def forward(self, x, indices: Optional[Tensor] = None, *args, **kwargs) -> Tensor:
+    def forward(self, x, indices: Optional[Tensor] = None) -> Tensor:
         if self.patch_dim == -1:
             return self.forward_patch_last(x, indices=indices)
         else:
@@ -139,7 +139,7 @@ class LearnablePositionEncoding(BaseLayer):
         self.channel_last = channels_last
         self.dropout = Dropout(p=dropout)
 
-    def forward(self, x, *args, **kwargs) -> Tensor:
+    def forward(self, x) -> Tensor:
         num_embeddings = x.shape[-2] if self.channel_last else x.shape[-1]
         posistions = torch.arange(num_embeddings, dtype=torch.int64, device=x.device)
         position_emb = self.pos_emb(posistions)

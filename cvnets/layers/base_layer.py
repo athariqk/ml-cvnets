@@ -55,7 +55,7 @@ class BaseLayer(nn.Module):
         )
         return param_list, [1.0] * len(param_list)
 
-    def forward(self, *args, **kwargs) -> Any:
+    def forward(self) -> Any:
         """Forward function."""
         raise NotImplementedError("Sub-classes should implement forward method")
 

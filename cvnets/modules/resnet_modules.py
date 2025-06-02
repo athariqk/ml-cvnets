@@ -126,7 +126,7 @@ class BasicResNetBlock(BaseModule):
         self.stochastic_depth_prob = stochastic_depth_prob
         self.squeeze_channels = squeeze_channels
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = self.block(x)
         out = self.se_block(out)
         res = self.down_sample(x)
@@ -276,7 +276,7 @@ class BottleneckResNetBlock(BaseModule):
         self.stochastic_depth_prob = stochastic_depth_prob
         self.squeeze_channels = squeeze_channels
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = self.block(x)
         out = self.se_block(out)
         res = self.down_sample(x)

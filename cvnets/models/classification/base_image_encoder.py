@@ -282,7 +282,7 @@ class BaseImageEncoder(BaseAnyNNModel):
         x = self.classifier(x)
         return x
 
-    def forward(self, x: Any, *args, **kwargs) -> Any:
+    def forward(self, x: Any) -> Any:
         """A forward function of the model, optionally training the model with
         neural augmentation."""
         if self.neural_augmentor is not None:
@@ -297,7 +297,7 @@ class BaseImageEncoder(BaseAnyNNModel):
                 }
             return out_dict
         else:
-            x = self.forward_classifier(x, *args, **kwargs)
+            x = self.forward_classifier(x)
             return x
 
     def get_trainable_parameters(

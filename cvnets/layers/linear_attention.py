@@ -131,7 +131,7 @@ class LinearSelfAttention(BaseLayer):
             print("Please install OpenCV to visualize context maps")
             return context_map
 
-    def _forward_self_attn(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def _forward_self_attn(self, x: Tensor) -> Tensor:
         # [B, C, P, N] --> [B, h + 2d, P, N]
         qkv = self.qkv_proj(x)
 
@@ -139,7 +139,7 @@ class LinearSelfAttention(BaseLayer):
         # Query --> [B, 1, P, N]
         # value, key --> [B, d, P, N]
         query, key, value = torch.split(
-            qkv, split_size_or_sections=[1, self.embed_dim, self.embed_dim], dim=1
+            qkv, [1, self.embed_dim, self.embed_dim], 1
         )
 
         # apply softmax along N dimension
@@ -161,7 +161,7 @@ class LinearSelfAttention(BaseLayer):
         return out
 
     def _forward_cross_attn(
-        self, x: Tensor, x_prev: Optional[Tensor] = None, *args, **kwargs
+        self, x: Tensor, x_prev: Optional[Tensor] = None
     ) -> Tensor:
         # x --> [B, C, P, N]
         # x_prev = [B, C, P, M]
@@ -182,7 +182,7 @@ class LinearSelfAttention(BaseLayer):
             bias=self.qkv_proj.block.conv.bias[: self.embed_dim + 1, ...],
         )
         # [B, 1 + d, P, M] --> [B, 1, P, M], [B, d, P, M]
-        query, key = torch.split(qk, split_size_or_sections=[1, self.embed_dim], dim=1)
+        query, key = torch.split(qk, [1, self.embed_dim], 1)
         # [B, C, P, N] --> [B, d, P, N]
         value = F.conv2d(
             x,
@@ -207,9 +207,9 @@ class LinearSelfAttention(BaseLayer):
         return out
 
     def forward(
-        self, x: Tensor, x_prev: Optional[Tensor] = None, *args, **kwargs
+        self, x: Tensor, x_prev: Optional[Tensor] = None
     ) -> Tensor:
         if x_prev is None:
-            return self._forward_self_attn(x, *args, **kwargs)
+            return self._forward_self_attn(x)
         else:
-            return self._forward_cross_attn(x, x_prev=x_prev, *args, **kwargs)
+            return self._forward_cross_attn(x, x_prev=x_prev)

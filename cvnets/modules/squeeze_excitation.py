@@ -77,7 +77,7 @@ class SqueezeExcitation(BaseModule):
         self.squeeze_factor = squeeze_factor
         self.scale_fn = scale_fn_name
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         return x * self.se_layer(x)
 
     def __repr__(self) -> str:

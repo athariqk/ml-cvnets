@@ -93,7 +93,7 @@ class FeaturePyramidNetwork(BaseModule):
             elif isinstance(m, norm_layers_tuple):
                 initialize_norm_layers(m)
 
-    def forward(self, x: Dict[str, Tensor], *args, **kwargs) -> Dict[str, Tensor]:
+    def forward(self, x: Dict[str, Tensor]) -> Dict[str, Tensor]:
         assert len(x) == self.num_fpn_layers
 
         # dictionary to store results for fpn

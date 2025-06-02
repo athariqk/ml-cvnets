@@ -314,7 +314,7 @@ class MobileViTBlock(BaseModule):
         return fm, patches
 
     def forward(
-        self, x: Union[Tensor, Tuple[Tensor]], *args, **kwargs
+        self, x: Union[Tensor, Tuple[Tensor]]
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         if isinstance(x, Tuple) and len(x) == 2:
             # for spatio-temporal MobileViT
@@ -594,15 +594,17 @@ class MobileViTBlockv2(BaseModule):
 
     def resize_input_if_needed(self, x):
         batch_size, in_channels, orig_h, orig_w = x.shape
-        if orig_h % self.patch_h != 0 or orig_w % self.patch_w != 0:
-            new_h = int(math.ceil(orig_h / self.patch_h) * self.patch_h)
-            new_w = int(math.ceil(orig_w / self.patch_w) * self.patch_w)
+
+        new_h = int(math.ceil(orig_h / self.patch_h) * self.patch_h)
+        new_w = int(math.ceil(orig_w / self.patch_w) * self.patch_w)
+
+        if torch.jit.is_scripting() and orig_h % self.patch_h != 0 or orig_w % self.patch_w != 0:
             x = F.interpolate(
                 x, size=(new_h, new_w), mode="bilinear", align_corners=True
             )
         return x
 
-    def forward_spatial(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward_spatial(self, x: Tensor) -> Tensor:
         x = self.resize_input_if_needed(x)
 
         fm = self.local_rep(x)
@@ -626,7 +628,7 @@ class MobileViTBlockv2(BaseModule):
         return fm
 
     def forward_temporal(
-        self, x: Tensor, x_prev: Tensor, *args, **kwargs
+        self, x: Tensor, x_prev: Tensor
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         x = self.resize_input_if_needed(x)
 
@@ -655,7 +657,7 @@ class MobileViTBlockv2(BaseModule):
         return fm, patches
 
     def forward(
-        self, x: Union[Tensor, Tuple[Tensor]], *args, **kwargs
+        self, x: Union[Tensor, Tuple[Tensor]]
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         if isinstance(x, Tuple) and len(x) == 2:
             # for spatio-temporal data (e.g., videos)

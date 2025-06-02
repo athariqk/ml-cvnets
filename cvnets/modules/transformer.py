@@ -132,8 +132,6 @@ class TransformerEncoder(BaseModule):
         x_prev: Optional[Tensor] = None,
         key_padding_mask: Optional[Tensor] = None,
         attn_mask: Optional[Tensor] = None,
-        *args,
-        **kwargs,
     ) -> Tensor:
 
         # Multi-head attention
@@ -246,7 +244,7 @@ class LinearAttnFFN(BaseModule):
         )
 
     def forward(
-        self, x: Tensor, x_prev: Optional[Tensor] = None, *args, **kwargs
+        self, x: Tensor, x_prev: Optional[Tensor] = None
     ) -> Tensor:
         if x_prev is None:
             # self-attention
