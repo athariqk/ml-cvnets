@@ -37,6 +37,8 @@ class SSDHead(BaseModule):
         in_channels: int,
         n_anchors: int,
         n_classes: int,
+        roi_size: int,
+        roi_spatial_scale: float,
         n_coordinates: Optional[int] = 4,
         proj_channels: Optional[int] = -1,
         kernel_size: Optional[int] = 3,
@@ -79,8 +81,14 @@ class SSDHead(BaseModule):
             use_act=False,
         )
 
-        self.roi_size = 7
-        self.roi_align = RoIAlign(output_size=self.roi_size, spatial_scale=1.0, sampling_ratio=1)
+        self.roi_size = roi_size
+        self.roi_spatial_scale = roi_spatial_scale
+        self.roi_align = RoIAlign(
+            output_size=self.roi_size,
+            spatial_scale=self.roi_spatial_scale,
+            sampling_ratio=-1,
+            aligned=True
+        )
 
         self.n_coordinates = n_coordinates
         self.n_classes = n_classes

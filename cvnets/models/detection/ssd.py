@@ -157,6 +157,8 @@ class SingleShotMaskDetector(BaseDetection):
 
         self.n_phenotypes = getattr(opts, "model.detection.ssd.n_phenotypes", 0)
 
+        self.roi_size = 7
+
         self.ssd_heads = nn.ModuleList()
 
         for os, in_dim, n_anchors, step in zip(
@@ -170,6 +172,8 @@ class SingleShotMaskDetector(BaseDetection):
                     opts=opts,
                     in_channels=in_dim,
                     n_classes=self.n_detection_classes,
+                    roi_size=self.roi_size,
+                    roi_spatial_scale=1.0 / os if os != -1 else 1.0,
                     n_coordinates=self.coordinates,
                     n_anchors=n_anchors,
                     proj_channels=head_out_channels,
