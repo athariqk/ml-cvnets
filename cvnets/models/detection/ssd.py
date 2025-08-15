@@ -184,6 +184,7 @@ class SingleShotMaskDetector(BaseDetection):
                 PhenotypeHead(
                     opts=opts,
                     in_channels=in_dim,
+                    n_anchors=n_anchors,
                     n_phenotypes=self.n_phenotypes,
                 )
             ]
