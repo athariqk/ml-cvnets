@@ -17,7 +17,6 @@ from cvnets.modules.pspnet_module import PSP
 from cvnets.modules.mobilevit_block import MobileViTBlock, MobileViTBlockv2
 from cvnets.modules.feature_pyramid import FeaturePyramidNetwork
 from cvnets.modules.ssd_heads import SSDHead, SSDInstanceHead
-from cvnets.modules.phenotype_head import PhenotypeHead
 from cvnets.modules.efficientnet import EfficientNetBlock
 from cvnets.modules.mobileone_block import MobileOneBlock, RepLKBlock
 from cvnets.modules.swin_transformer_block import (
@@ -44,7 +43,6 @@ __all__ = [
     "RepLKBlock",
     "FeaturePyramidNetwork",
     "SSDHead",
-    "PhenotypeHead",
     "SSDInstanceHead",
     "EfficientNetBlock",
     "SwinTransformerBlock",
