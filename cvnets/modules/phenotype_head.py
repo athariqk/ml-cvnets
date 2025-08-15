@@ -19,7 +19,7 @@ class PhenotypeHead(BaseModule):
             **kwargs
     ) -> None:
         super().__init__()
-        hidden_dim_width = n_anchors * n_phenotypes
+        hidden_dim_width = 512 + n_anchors * n_phenotypes
 
         self.pool = nn.AdaptiveAvgPool2d(1)
 
@@ -32,8 +32,6 @@ class PhenotypeHead(BaseModule):
         self.n_anchors = n_anchors
         self.n_phenotypes = n_phenotypes
         self.in_channel = in_channels
-
-        self.reset_parameters()
 
     def __repr__(self) -> str:
         repr_str = "{}(in_channels={}, n_anchors={}, n_phenotypes={})".format(
