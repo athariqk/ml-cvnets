@@ -37,7 +37,6 @@ class SSDHead(BaseModule):
         in_channels: int,
         n_anchors: int,
         n_classes: int,
-        n_phenotypes: int,
         n_coordinates: Optional[int] = 4,
         proj_channels: Optional[int] = -1,
         kernel_size: Optional[int] = 3,
@@ -71,7 +70,7 @@ class SSDHead(BaseModule):
         self.loc_cls_layer = conv_fn(
             opts=opts,
             in_channels=in_channels,
-            out_channels=n_anchors * (n_coordinates + n_classes + n_phenotypes),
+            out_channels=n_anchors * (n_coordinates + n_classes),
             kernel_size=kernel_size,
             stride=1,
             groups=1,
@@ -82,7 +81,6 @@ class SSDHead(BaseModule):
 
         self.n_coordinates = n_coordinates
         self.n_classes = n_classes
-        self.n_phenotypes = n_phenotypes
         self.n_anchors = n_anchors
         self.k_size = kernel_size
         self.stride = stride
@@ -91,13 +89,12 @@ class SSDHead(BaseModule):
         self.reset_parameters()
 
     def __repr__(self) -> str:
-        repr_str = "{}(in_channels={}, n_anchors={}, n_classes={}, n_coordinates={}, n_phenotypes={}, kernel_size={}, stride={}".format(
+        repr_str = "{}(in_channels={}, n_anchors={}, n_classes={}, n_coordinates={}, kernel_size={}, stride={}".format(
             self.__class__.__name__,
             self.in_channel,
             self.n_anchors,
             self.n_classes,
             self.n_coordinates,
-            self.n_phenotypes,
             self.k_size,
             self.stride,
         )
@@ -150,13 +147,13 @@ class SSDHead(BaseModule):
         # [B x Anchors * (coordinates + classes) x H x W] --> [B x H x W x Anchors * (coordinates + classes)]
         x = x.permute(0, 2, 3, 1)
         # [B x H x W x Anchors * (coordinates + classes)] --> [B x H*W*Anchors X (coordinates + classes)]
-        x = x.contiguous().view(batch_size, -1, self.n_coordinates + self.n_classes + self.n_phenotypes)
+        x = x.contiguous().view(batch_size, -1, self.n_coordinates + self.n_classes)
 
         # [B x H*W*Anchors X (coordinates + classes)] --> [B x H*W*Anchors X coordinates], [B x H*W*Anchors X classes]
-        box_locations, box_classes, phenotypes = torch.split(
-            x, [self.n_coordinates, self.n_classes, self.n_phenotypes], dim=-1
+        box_locations, box_classes = torch.split(
+            x, [self.n_coordinates, self.n_classes], dim=-1
         )
-        return box_locations, box_classes, phenotypes
+        return box_locations, box_classes
 
 
 class SSDInstanceHead(BaseModule):
