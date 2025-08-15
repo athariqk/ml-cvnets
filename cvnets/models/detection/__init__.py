@@ -7,6 +7,6 @@ from collections import namedtuple
 
 DetectionPredTuple = namedtuple(
     typename="DetectionPredTuple",
-    field_names=("labels", "scores", "boxes", "masks", "phenotypes"),
+    field_names=("labels", "scores", "boxes", "masks", "rois"),
     defaults=(None, None, None, None, None),
 )

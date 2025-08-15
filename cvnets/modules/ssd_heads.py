@@ -9,7 +9,7 @@ import torch
 from torch import Tensor, nn
 from torchvision.ops.roi_align import RoIAlign
 
-from cvnets.layers import ConvLayer2d, SeparableConv2d, TransposeConvLayer2d
+from cvnets.layers import ConvLayer2d, SeparableConv2d, TransposeConvLayer2d, LinearLayer
 from cvnets.misc.init_utils import initialize_conv_layer
 from cvnets.modules import BaseModule
 
@@ -37,6 +37,7 @@ class SSDHead(BaseModule):
         in_channels: int,
         n_anchors: int,
         n_classes: int,
+        n_phenotypes: int,
         n_coordinates: Optional[int] = 4,
         proj_channels: Optional[int] = -1,
         kernel_size: Optional[int] = 3,
@@ -79,8 +80,19 @@ class SSDHead(BaseModule):
             use_act=False,
         )
 
+        self.roi_size = 7
+        self.roi_align = RoIAlign(output_size=self.roi_size, spatial_scale=1.0, sampling_ratio=1)
+        self.regressor = nn.Sequential(
+            LinearLayer(in_channels * self.roi_size * self.roi_size, 256),
+            nn.ReLU(inplace=True),
+            LinearLayer(256, 128),
+            nn.ReLU(inplace=True),
+            LinearLayer(128, n_phenotypes)
+        )
+
         self.n_coordinates = n_coordinates
         self.n_classes = n_classes
+        self.n_phenotypes = n_phenotypes
         self.n_anchors = n_anchors
         self.k_size = kernel_size
         self.stride = stride
@@ -89,12 +101,13 @@ class SSDHead(BaseModule):
         self.reset_parameters()
 
     def __repr__(self) -> str:
-        repr_str = "{}(in_channels={}, n_anchors={}, n_classes={}, n_coordinates={}, kernel_size={}, stride={}".format(
+        repr_str = "{}(in_channels={}, n_anchors={}, n_classes={}, n_coordinates={}, n_phenotypes={}, kernel_size={}, stride={}".format(
             self.__class__.__name__,
             self.in_channel,
             self.n_anchors,
             self.n_classes,
             self.n_coordinates,
+            self.n_phenotypes,
             self.k_size,
             self.stride,
         )
@@ -132,8 +145,10 @@ class SSDHead(BaseModule):
         x_sampled = torch.index_select(x_sampled, dim=-2, index=indices_h)
         return x_sampled
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         batch_size = x.shape[0]
+
+        x_temp = x
 
         if self.proj_layer is not None:
             x = self.proj_layer(x)
@@ -153,7 +168,39 @@ class SSDHead(BaseModule):
         box_locations, box_classes = torch.split(
             x, [self.n_coordinates, self.n_classes], dim=-1
         )
-        return box_locations, box_classes
+
+        num_boxes = box_locations.size(1)
+
+        # 1. Create batch indices for each box
+        # [0, 0, ..., 1, 1, ..., B-1, B-1, ...]
+        batch_indices = torch.arange(
+            batch_size, device=x.device
+        ).view(-1, 1).expand(-1, num_boxes)
+
+        # 2. Format boxes for RoIAlign: requires a [K, 5] tensor
+        # where K is the total number of boxes and columns are [batch_idx, x1, y1, x2, y2]
+        # NOTE: This assumes `box_locations` are already in (x1, y1, x2, y2) format.
+        # If they are in (cx, cy, w, h), they must be converted first.
+        rois = torch.cat(
+            [batch_indices.reshape(-1, 1), box_locations.reshape(-1, self.n_coordinates)],
+            dim=1
+        )
+
+        # 3. Apply RoIAlign to get features for each box
+        # Input: [B, C, H, W], rois: [B*N, 5]
+        # Output: [B*N, C, output_size, output_size]
+        box_features = self.roi_align(x_temp, rois)
+
+        # 4. Flatten features and pass through the regressor
+        # -> [B*N, C*output_size*output_size]
+        flat_features = torch.flatten(box_features, 1)
+        # -> [B*N, num_phenotypes]
+        phenotypes = self.regressor(flat_features)
+
+        # 5. Reshape the output to the desired [B, N, num_phenotypes]
+        phenotypes = phenotypes.view(batch_size, num_boxes, self.n_phenotypes)
+
+        return box_locations, box_classes, phenotypes
 
 
 class SSDInstanceHead(BaseModule):
