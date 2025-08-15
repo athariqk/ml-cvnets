@@ -155,7 +155,7 @@ class SingleShotMaskDetector(BaseDetection):
         # Create SSD detection and classification heads
         anchor_steps = self.anchor_box_generator.step
 
-        self.n_phenotypes = getattr(opts, "model.detection.ssd.n_phenotypes", 0)
+        self.n_phenotypes = getattr(opts, "model.detection.ssd.n_phenotypes", 2)
 
         self.roi_size = 7
 
