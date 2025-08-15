@@ -13,7 +13,7 @@ from torch import Tensor, nn
 from torchvision.ops import batched_nms
 
 from cvnets.anchor_generator import build_anchor_generator
-from cvnets.layers import AdaptiveAvgPool2d, ConvLayer2d, SeparableConv2d
+from cvnets.layers import AdaptiveAvgPool2d, ConvLayer2d, SeparableConv2d, LinearLayer
 from cvnets.matcher_det import build_matcher
 from cvnets.misc.init_utils import initialize_conv_layer
 from cvnets.models import MODEL_REGISTRY
@@ -21,7 +21,6 @@ from cvnets.models.classification.base_image_encoder import BaseImageEncoder
 from cvnets.models.detection import DetectionPredTuple
 from cvnets.models.detection.base_detection import BaseDetection
 from cvnets.modules import SSDHead
-from cvnets.modules import PhenotypeHead
 from utils import logger
 from utils.common_utils import is_coreml_conversion
 
@@ -124,6 +123,8 @@ class SingleShotMaskDetector(BaseDetection):
         if self.extra_layers is not None:
             self.reset_layers(module=self.extra_layers)
 
+        head_out_channels = getattr(opts, "model.detection.ssd.head_out_channels", 256)
+
         self.fpn = None
         if getattr(opts, "model.detection.ssd.use_fpn", False):
             from cvnets.modules import FeaturePyramidNetwork
@@ -137,8 +138,7 @@ class SingleShotMaskDetector(BaseDetection):
             )
             # update the enc_channels_list
             enc_channels_list = [fpn_channels] * len(output_strides)
-            # for FPN, we do not need to do projections
-            proj_channels = enc_channels_list
+            head_out_channels = fpn_channels
 
         # Anchor box related parameters
         self.conf_threshold = getattr(opts, "model.detection.ssd.conf_threshold", 0.01)
@@ -159,10 +159,9 @@ class SingleShotMaskDetector(BaseDetection):
 
         self.ssd_heads = nn.ModuleList()
 
-        for os, in_dim, proj_dim, n_anchors, step in zip(
+        for os, in_dim, n_anchors, step in zip(
             output_strides,
             enc_channels_list,
-            proj_channels,
             anchors_aspect_ratio,
             anchor_steps,
         ):
@@ -171,14 +170,21 @@ class SingleShotMaskDetector(BaseDetection):
                     opts=opts,
                     in_channels=in_dim,
                     n_classes=self.n_detection_classes,
-                    n_phenotypes=self.n_phenotypes,
                     n_coordinates=self.coordinates,
                     n_anchors=n_anchors,
-                    proj_channels=proj_dim,
+                    proj_channels=head_out_channels,
                     kernel_size=3 if os != -1 else 1,
                     stride=step,
                 )
             ]
+
+        self.regressor = nn.Sequential(
+            LinearLayer(head_out_channels * self.roi_size * self.roi_size, 256),
+            nn.ReLU(inplace=True),
+            LinearLayer(256, 128),
+            nn.ReLU(inplace=True),
+            LinearLayer(128, self.n_phenotypes)
+        )
 
         self.anchors_aspect_ratio = anchors_aspect_ratio
         self.output_strides = output_strides
@@ -345,11 +351,22 @@ class SingleShotMaskDetector(BaseDetection):
         anchors = []
         phenotypes = []
 
-        for os, ssd_head, phenotype_head in zip(self.output_strides, self.ssd_heads, self.phenotype_heads):
+        for os, ssd_head in zip(self.output_strides, self.ssd_heads):
             x = end_points["os_{}".format(os)]
             fm_h, fm_w = x.shape[2:]
-            loc, pred = ssd_head(x)
-            pheno = phenotype_head(x)
+            batch_size = x.shape[0]
+            loc, pred, rois = ssd_head(x)
+
+            num_boxes = loc.size(1)
+
+            # Flatten features and pass through the regressor
+            # -> [B*N, C*output_size*output_size]
+            flat_features = torch.flatten(rois, 1)
+            # -> [B*N, num_phenotypes]
+            pheno = self.regressor(flat_features)
+
+            # Reshape the output to the desired [B, N, num_phenotypes]
+            pheno = pheno.view(batch_size, num_boxes, self.n_phenotypes)
 
             locations.append(loc)
             confidences.append(pred)
