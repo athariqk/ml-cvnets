@@ -157,7 +157,7 @@ class SingleShotMaskDetector(BaseDetection):
 
         self.n_phenotypes = getattr(opts, "model.detection.ssd.n_phenotypes", 2)
 
-        self.roi_size = 7
+        self.roi_size = 17
 
         self.ssd_heads = nn.ModuleList()
 
@@ -183,11 +183,9 @@ class SingleShotMaskDetector(BaseDetection):
             ]
 
         self.regressor = nn.Sequential(
-            LinearLayer(head_out_channels * self.roi_size * self.roi_size, 256),
+            LinearLayer(head_out_channels * self.roi_size * self.roi_size, 1024),
             nn.ReLU(inplace=True),
-            LinearLayer(256, 128),
-            nn.ReLU(inplace=True),
-            LinearLayer(128, self.n_phenotypes)
+            LinearLayer(1024, self.n_phenotypes),
         )
 
         self.anchors_aspect_ratio = anchors_aspect_ratio
