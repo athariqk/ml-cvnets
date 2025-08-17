@@ -326,7 +326,7 @@ def get_training_arguments(
     parser = arguments_common(parser=parser)
 
     # text tokenizer arguments
-    parser = arguments_tokenizer(parser=parser)
+    # parser = arguments_tokenizer(parser=parser)
 
     # metric arguments
     parser = METRICS_REGISTRY.all_arguments(parser=parser)

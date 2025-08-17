@@ -13,7 +13,7 @@ from torch import Tensor, nn
 from torchvision.ops import batched_nms
 
 from cvnets.anchor_generator import build_anchor_generator
-from cvnets.layers import AdaptiveAvgPool2d, ConvLayer2d, SeparableConv2d, LinearLayer
+from cvnets.layers import AdaptiveAvgPool2d, ConvLayer2d, SeparableConv2d, LinearLayer, Flatten
 from cvnets.matcher_det import build_matcher
 from cvnets.misc.init_utils import initialize_conv_layer
 from cvnets.models import MODEL_REGISTRY
@@ -162,10 +162,10 @@ class SingleShotMaskDetector(BaseDetection):
         self.ssd_heads = nn.ModuleList()
 
         for os, in_dim, n_anchors, step in zip(
-            output_strides,
-            enc_channels_list,
-            anchors_aspect_ratio,
-            anchor_steps,
+                output_strides,
+                enc_channels_list,
+                anchors_aspect_ratio,
+                anchor_steps,
         ):
             self.ssd_heads += [
                 SSDHead(
@@ -183,9 +183,44 @@ class SingleShotMaskDetector(BaseDetection):
             ]
 
         self.regressor = nn.Sequential(
-            LinearLayer(head_out_channels * self.roi_size * self.roi_size, 1024),
+            # Preserve spatial structure initially
+            ConvLayer2d(
+                opts=opts,
+                in_channels=head_out_channels,
+                out_channels=128,
+                kernel_size=3,
+                padding=1,
+                use_norm=True,
+                use_act=True),
+            # Gradual spatial reduction
+            ConvLayer2d(
+                opts=opts,
+                in_channels=128,
+                out_channels=64,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                use_norm=True,
+                use_act=True),  # 17×17 → 9×9
+            ConvLayer2d(
+                opts=opts,
+                in_channels=64,
+                out_channels=32,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                use_norm=True,
+                use_act=True),  # 9×9 → 5×5
+
+            # Global pooling while preserving some spatial info
+            AdaptiveAvgPool2d(2),  # 5×5 → 2×2, keeps some spatial layout
+            Flatten(),  # 2×2×32 = 128 features
+
+            # Final regression layers
+            LinearLayer(128, 64),
             nn.ReLU(inplace=True),
-            LinearLayer(1024, self.n_phenotypes),
+            nn.Dropout(0.2),
+            LinearLayer(64, self.n_phenotypes)
         )
 
         self.anchors_aspect_ratio = anchors_aspect_ratio
@@ -341,11 +376,11 @@ class SingleShotMaskDetector(BaseDetection):
         return end_points
 
     def ssd_forward(
-        self,
-        end_points: Dict[str, Tensor],
-        device: Optional[torch.device] = torch.device("cpu"),
-        *args,
-        **kwargs
+            self,
+            end_points: Dict[str, Tensor],
+            device: Optional[torch.device] = torch.device("cpu"),
+            *args,
+            **kwargs
     ) -> Union[Tuple[Tensor, Tensor, Tensor, Tensor], Tuple[Tensor, ...]]:
 
         locations = []
@@ -361,11 +396,7 @@ class SingleShotMaskDetector(BaseDetection):
 
             num_boxes = loc.size(1)
 
-            # Flatten features and pass through the regressor
-            # -> [B*N, C*output_size*output_size]
-            flat_features = torch.flatten(rois, 1)
-            # -> [B*N, num_phenotypes]
-            pheno = self.regressor(flat_features)
+            pheno = self.regressor(rois)
 
             # Reshape the output to the desired [B, N, num_phenotypes]
             pheno = pheno.view(batch_size, num_boxes, self.n_phenotypes)
@@ -389,7 +420,7 @@ class SingleShotMaskDetector(BaseDetection):
         return confidences, locations, anchors, phenotypes
 
     def forward(
-        self, x: Union[Tensor, Dict]
+            self, x: Union[Tensor, Dict]
     ) -> Union[Tuple[Tensor, ...], Tuple[Any, ...], Dict]:
         if isinstance(x, Dict):
             input_tensor = x["image"]
@@ -451,7 +482,7 @@ class SingleShotMaskDetector(BaseDetection):
 
     @torch.no_grad()
     def postprocess_detections(
-        self, boxes: Tensor, scores: Tensor, phenotypes: Tensor
+            self, boxes: Tensor, scores: Tensor, phenotypes: Tensor
     ) -> List[DetectionPredTuple]:
         """Post process detections, including NMS"""
         # boxes [B, N, 4]
