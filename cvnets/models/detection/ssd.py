@@ -157,7 +157,7 @@ class SingleShotMaskDetector(BaseDetection):
 
         self.n_phenotypes = getattr(opts, "model.detection.ssd.n_phenotypes", 2)
 
-        self.roi_size = 17
+        self.roi_size = 7
 
         self.ssd_heads = nn.ModuleList()
 
