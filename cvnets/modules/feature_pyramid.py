@@ -97,7 +97,7 @@ class FeaturePyramidNetwork(BaseModule):
         assert len(x) == self.num_fpn_layers
 
         # dictionary to store results for fpn
-        fpn_out_dict = {"os_".format(os): None for os in self.output_strides}
+        fpn_out_dict = {"os_{}".format(os): None for os in self.output_strides}
 
         # process the last output stride
         os_key = "os_{}".format(self.output_strides[-1])
