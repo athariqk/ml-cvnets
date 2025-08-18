@@ -43,6 +43,7 @@ class SSDHead(BaseModule):
         proj_channels: Optional[int] = -1,
         kernel_size: Optional[int] = 3,
         stride: Optional[int] = 1,
+        roi_batch_size: Optional[int] = 256,
         *args,
         **kwargs
     ) -> None:
@@ -83,6 +84,7 @@ class SSDHead(BaseModule):
 
         self.roi_size = roi_size
         self.roi_spatial_scale = roi_spatial_scale
+        self.roi_batch_size = roi_batch_size
         self.roi_align = RoIAlign(
             output_size=self.roi_size,
             spatial_scale=self.roi_spatial_scale,
@@ -189,7 +191,7 @@ class SSDHead(BaseModule):
                 batch_boxes_subset = boxes_with_batch_idx[start_idx:end_idx]
 
                 # Apply ROI align to this batch of boxes
-                roi_features_subset = self.roi_align(batch_features, [batch_boxes_subset])
+                roi_features_subset = self.roi_align(batch_features, batch_boxes_subset)
                 batch_roi_features.append(roi_features_subset)
 
             # Concatenate all batched ROI features for this batch item

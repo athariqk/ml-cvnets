@@ -157,6 +157,7 @@ class SingleShotMaskDetector(BaseDetection):
 
         self.n_phenotypes = getattr(opts, "model.detection.ssd.n_phenotypes", 2)
 
+        self.roi_batch_size = getattr(opts, "model.detection.ssd.roi_batch_size", 256)
         self.roi_size = 7
 
         self.ssd_heads = nn.ModuleList()
@@ -179,6 +180,7 @@ class SingleShotMaskDetector(BaseDetection):
                     proj_channels=head_out_channels,
                     kernel_size=3 if os != -1 else 1,
                     stride=step,
+                    roi_batch_size=self.roi_batch_size,
                 )
             ]
 
@@ -305,6 +307,13 @@ class SingleShotMaskDetector(BaseDetection):
                            type=int,
                            default=0,
                            help="Number of lettuce phenotypes regression outputs")
+
+        group.add_argument(
+            "--model.detection.ssd.roi-batch-size",
+            type=int,
+            default=256,
+            help="Batch size for ROI processing to reduce memory usage. Lower values use less memory."
+        )
 
         return parser
 
