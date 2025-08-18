@@ -138,7 +138,8 @@ class SingleShotMaskDetector(BaseDetection):
             )
             # update the enc_channels_list
             enc_channels_list = [fpn_channels] * len(output_strides)
-            head_out_channels = fpn_channels
+            # for FPN, we do not need to do projections
+            proj_channels = enc_channels_list
 
         # Anchor box related parameters
         self.conf_threshold = getattr(opts, "model.detection.ssd.conf_threshold", 0.01)
@@ -162,9 +163,10 @@ class SingleShotMaskDetector(BaseDetection):
 
         self.ssd_heads = nn.ModuleList()
 
-        for os, in_dim, n_anchors, step in zip(
+        for os, in_dim, proj_dim, n_anchors, step in zip(
                 output_strides,
                 enc_channels_list,
+                proj_channels,
                 anchors_aspect_ratio,
                 anchor_steps,
         ):
@@ -177,36 +179,36 @@ class SingleShotMaskDetector(BaseDetection):
                     roi_spatial_scale=1.0 / os if os != -1 else 1.0,
                     n_coordinates=self.coordinates,
                     n_anchors=n_anchors,
-                    proj_channels=head_out_channels,
+                    proj_channels=proj_dim,
                     kernel_size=3 if os != -1 else 1,
                     stride=step,
                     roi_batch_size=self.roi_batch_size,
                 )
             ]
 
-        self.regressor = nn.Sequential(
-            SeparableConv2d(opts, head_out_channels, head_out_channels, 3),
-
-            # Max pooling to reduce spatial dimensions from 7x7 to 3x3
-            # This is the key step for parameter reduction.
-            nn.MaxPool2d(kernel_size=2, stride=2),
-
-            # Second conv block to learn more complex features from the reduced 3x3 map
-            SeparableConv2d(opts, head_out_channels, head_out_channels, 3),
-
-            # Final pooling to summarize the PROCESSED 3x3 features into a feature vector
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Linear(head_out_channels, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-            nn.Linear(128, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-            nn.Linear(64, self.n_phenotypes)
-        )
+        # self.regressor = nn.Sequential(
+        #     SeparableConv2d(opts, head_out_channels, head_out_channels, 3),
+        #
+        #     # Max pooling to reduce spatial dimensions from 7x7 to 3x3
+        #     # This is the key step for parameter reduction.
+        #     nn.MaxPool2d(kernel_size=2, stride=2),
+        #
+        #     # Second conv block to learn more complex features from the reduced 3x3 map
+        #     SeparableConv2d(opts, head_out_channels, head_out_channels, 3),
+        #
+        #     # Final pooling to summarize the PROCESSED 3x3 features into a feature vector
+        #     nn.AdaptiveAvgPool2d(1),
+        #     nn.Flatten(),
+        #     nn.Linear(head_out_channels, 128),
+        #     nn.BatchNorm1d(128),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(128, 64),
+        #     nn.BatchNorm1d(64),
+        #     nn.ReLU(inplace=True),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(64, self.n_phenotypes)
+        # )
 
         self.anchors_aspect_ratio = anchors_aspect_ratio
         self.output_strides = output_strides

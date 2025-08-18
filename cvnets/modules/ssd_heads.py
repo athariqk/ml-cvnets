@@ -82,15 +82,15 @@ class SSDHead(BaseModule):
             use_act=False,
         )
 
-        self.roi_size = roi_size
-        self.roi_spatial_scale = roi_spatial_scale
-        self.roi_batch_size = roi_batch_size
-        self.roi_align = RoIAlign(
-            output_size=self.roi_size,
-            spatial_scale=self.roi_spatial_scale,
-            sampling_ratio=-1,
-            aligned=True
-        )
+        # self.roi_size = roi_size
+        # self.roi_spatial_scale = roi_spatial_scale
+        # self.roi_batch_size = roi_batch_size
+        # self.roi_align = RoIAlign(
+        #     output_size=self.roi_size,
+        #     spatial_scale=self.roi_spatial_scale,
+        #     sampling_ratio=-1,
+        #     aligned=True
+        # )
 
         self.n_coordinates = n_coordinates
         self.n_classes = n_classes
