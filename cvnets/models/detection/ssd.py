@@ -383,15 +383,15 @@ class SingleShotMaskDetector(BaseDetection):
         for os, ssd_head in zip(self.output_strides, self.ssd_heads):
             x = end_points["os_{}".format(os)]
             fm_h, fm_w = x.shape[2:]
-            batch_size = x.shape[0]
-            loc, pred, rois = ssd_head(x)
+            # batch_size = x.shape[0]
+            loc, pred, pheno = ssd_head(x)
 
-            num_boxes = loc.size(1)
-
-            pheno = self.regressor(rois)
+            # num_boxes = loc.size(1)
+            #
+            # pheno = self.regressor(rois)
 
             # Reshape the output to the desired [B, N, num_phenotypes]
-            pheno = pheno.view(batch_size, num_boxes, self.n_phenotypes)
+            # pheno = pheno.view(batch_size, num_boxes, self.n_phenotypes)
 
             locations.append(loc)
             confidences.append(pred)

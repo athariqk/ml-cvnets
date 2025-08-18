@@ -73,7 +73,7 @@ class SSDHead(BaseModule):
         self.loc_cls_layer = conv_fn(
             opts=opts,
             in_channels=in_channels,
-            out_channels=n_anchors * (n_coordinates + n_classes),
+            out_channels=n_anchors * (n_coordinates + n_classes + 2),
             kernel_size=kernel_size,
             stride=1,
             groups=1,
@@ -222,7 +222,7 @@ class SSDHead(BaseModule):
         if self.proj_layer is not None:
             x = self.proj_layer(x)
 
-        x_temp = x
+        # x_temp = x
 
         # [B x C x H x W] --> [B x Anchors * (coordinates + classes) x H x W]
         x = self.loc_cls_layer(x)
@@ -233,16 +233,16 @@ class SSDHead(BaseModule):
         # [B x Anchors * (coordinates + classes) x H x W] --> [B x H x W x Anchors * (coordinates + classes)]
         x = x.permute(0, 2, 3, 1)
         # [B x H x W x Anchors * (coordinates + classes)] --> [B x H*W*Anchors X (coordinates + classes)]
-        x = x.contiguous().view(batch_size, -1, self.n_coordinates + self.n_classes)
+        x = x.contiguous().view(batch_size, -1, self.n_coordinates + self.n_classes + 2)
 
         # [B x H*W*Anchors X (coordinates + classes)] --> [B x H*W*Anchors X coordinates], [B x H*W*Anchors X classes]
-        box_locations, box_classes = torch.split(
-            x, [self.n_coordinates, self.n_classes], dim=-1
+        box_locations, box_classes, phenos = torch.split(
+            x, [self.n_coordinates, self.n_classes, 2], dim=-1
         )
 
-        box_features = self._batched_roi_align(x_temp, list(torch.unbind(box_locations, dim=0)))
+        # box_features = self._batched_roi_align(x_temp, list(torch.unbind(box_locations, dim=0)))
 
-        return box_locations, box_classes, box_features
+        return box_locations, box_classes, phenos
 
 
 class SSDInstanceHead(BaseModule):
