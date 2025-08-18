@@ -203,7 +203,7 @@ class SingleShotMaskDetector(BaseDetection):
             # Final pooling to summarize the PROCESSED 3x3 features into a feature vector
             nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
-            nn.Linear(head_out_channels * self.roi_size * self.roi_size, 128),
+            nn.Linear(head_out_channels, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(inplace=True),
             nn.Dropout(0.5),
