@@ -185,20 +185,14 @@ class SingleShotMaskDetector(BaseDetection):
             ]
 
         self.regressor = nn.Sequential(
-            nn.Conv2d(in_channels=head_out_channels, out_channels=head_out_channels, kernel_size=3, padding=1,
-                      bias=False),
-            nn.BatchNorm2d(head_out_channels),
-            nn.ReLU(inplace=True),
+            SeparableConv2d(opts, head_out_channels, head_out_channels, 3),
 
             # Max pooling to reduce spatial dimensions from 7x7 to 3x3
             # This is the key step for parameter reduction.
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             # Second conv block to learn more complex features from the reduced 3x3 map
-            nn.Conv2d(in_channels=head_out_channels, out_channels=head_out_channels, kernel_size=3, padding=1,
-                      bias=False),
-            nn.BatchNorm2d(head_out_channels),
-            nn.ReLU(inplace=True),
+            SeparableConv2d(opts, head_out_channels, head_out_channels, 3),
 
             # Final pooling to summarize the PROCESSED 3x3 features into a feature vector
             nn.AdaptiveAvgPool2d(1),
