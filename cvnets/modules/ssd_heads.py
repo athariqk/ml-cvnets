@@ -3,7 +3,7 @@
 # Copyright (C) 2023 Apple Inc. All Rights Reserved.
 #
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import torch
 from torch import Tensor, nn
@@ -143,6 +143,77 @@ class SSDHead(BaseModule):
         x_sampled = torch.index_select(x_sampled, dim=-2, index=indices_h)
         return x_sampled
 
+    def _batched_roi_align(self, features: Tensor, boxes_list: List[Tensor]) -> Tensor:
+        """
+        Process ROI alignment in batches to reduce memory usage
+
+        Args:
+            features: Feature maps [B, C, H, W]
+            boxes_list: List of boxes for each batch item
+
+        Returns:
+            ROI features [B*N, C, roi_size, roi_size] where N is total number of boxes
+        """
+        batch_size = features.size(0)
+        device = features.device
+
+        # Collect all ROI features
+        all_roi_features = []
+
+        for batch_idx in range(batch_size):
+            batch_boxes = boxes_list[batch_idx]
+            batch_features = features[batch_idx:batch_idx + 1]  # Keep batch dim
+
+            if batch_boxes.numel() == 0:
+                # Handle empty boxes case
+                empty_rois = torch.zeros(
+                    0, features.size(1), self.roi_size, self.roi_size,
+                    device=device, dtype=features.dtype
+                )
+                all_roi_features.append(empty_rois)
+                continue
+
+            # Add batch index to boxes (required by RoIAlign)
+            batch_indices = torch.zeros(
+                batch_boxes.size(0), 1,
+                device=device, dtype=batch_boxes.dtype
+            )
+            boxes_with_batch_idx = torch.cat([batch_indices, batch_boxes], dim=1)
+
+            # Process ROIs in batches to save memory
+            num_boxes = batch_boxes.size(0)
+            batch_roi_features = []
+
+            for start_idx in range(0, num_boxes, self.roi_batch_size):
+                end_idx = min(start_idx + self.roi_batch_size, num_boxes)
+                batch_boxes_subset = boxes_with_batch_idx[start_idx:end_idx]
+
+                # Apply ROI align to this batch of boxes
+                roi_features_subset = self.roi_align(batch_features, [batch_boxes_subset])
+                batch_roi_features.append(roi_features_subset)
+
+            # Concatenate all batched ROI features for this batch item
+            if batch_roi_features:
+                batch_roi_features = torch.cat(batch_roi_features, dim=0)
+                all_roi_features.append(batch_roi_features)
+            else:
+                # Handle case where no valid boxes
+                empty_rois = torch.zeros(
+                    0, features.size(1), self.roi_size, self.roi_size,
+                    device=device, dtype=features.dtype
+                )
+                all_roi_features.append(empty_rois)
+
+        # Concatenate all ROI features across batches
+        if all_roi_features and any(roi.numel() > 0 for roi in all_roi_features):
+            return torch.cat([roi for roi in all_roi_features if roi.numel() > 0], dim=0)
+        else:
+            # Handle case where no ROIs exist
+            return torch.zeros(
+                0, features.size(1), self.roi_size, self.roi_size,
+                device=device, dtype=features.dtype
+            )
+
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         batch_size = x.shape[0]
 
@@ -167,7 +238,7 @@ class SSDHead(BaseModule):
             x, [self.n_coordinates, self.n_classes], dim=-1
         )
 
-        box_features = self.roi_align(x_temp, list(torch.unbind(box_locations, dim=0)))
+        box_features = self._batched_roi_align(x_temp, list(torch.unbind(box_locations, dim=0)))
 
         return box_locations, box_classes, box_features
 

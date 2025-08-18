@@ -183,44 +183,17 @@ class SingleShotMaskDetector(BaseDetection):
             ]
 
         self.regressor = nn.Sequential(
-            # Preserve spatial structure initially
-            ConvLayer2d(
-                opts=opts,
-                in_channels=head_out_channels,
-                out_channels=128,
-                kernel_size=3,
-                padding=1,
-                use_norm=True,
-                use_act=True),
-            # Gradual spatial reduction
-            ConvLayer2d(
-                opts=opts,
-                in_channels=128,
-                out_channels=64,
-                kernel_size=3,
-                stride=2,
-                padding=1,
-                use_norm=True,
-                use_act=True),  # 17×17 → 9×9
-            ConvLayer2d(
-                opts=opts,
-                in_channels=64,
-                out_channels=32,
-                kernel_size=3,
-                stride=2,
-                padding=1,
-                use_norm=True,
-                use_act=True),  # 9×9 → 5×5
-
-            # Global pooling while preserving some spatial info
-            AdaptiveAvgPool2d(2),  # 5×5 → 2×2, keeps some spatial layout
-            Flatten(),  # 2×2×32 = 128 features
-
-            # Final regression layers
-            LinearLayer(128, 64),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(head_out_channels, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.2),
-            LinearLayer(64, self.n_phenotypes)
+            nn.Dropout(0.5),
+            nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(64, self.n_phenotypes)
         )
 
         self.anchors_aspect_ratio = anchors_aspect_ratio
