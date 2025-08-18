@@ -50,7 +50,7 @@ class SSDHead(BaseModule):
         super().__init__()
         proj_layer = None
         self.proj_channels = None
-        if proj_channels != -1 and proj_channels != in_channels:
+        if proj_channels != -1 and proj_channels != in_channels and kernel_size > 1:
             proj_layer = ConvLayer2d(
                 opts=opts,
                 in_channels=in_channels,
